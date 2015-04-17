@@ -55,4 +55,4 @@ moduleColors = labels2colors(net$colors)
 MEs = net$MEs;
 geneTree = net$dendrograms[[1]];
 save(MEs, moduleLabels, moduleColors, geneTree,
-file = "FemaleLiver-02-networkConstruction-auto.RData")
+file = paste(ruta, "FemaleLiver-Data/FemaleLiver-02-networkConstruction-auto.RData", sep=""))

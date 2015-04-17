@@ -40,7 +40,7 @@ saveTOMFileBase = "femaleMouseTOM-blockwise",
 verbose = 3)
 
 # Load the results of single-block analysis
-load(file = "FemaleLiver-02-networkConstruction-auto.RData");
+load(file = paste(ruta, "FemaleLiver-Data/FemaleLiver-02-networkConstruction-auto.RData", sep=""));
 # Relabel blockwise modules
 bwLabels = matchLabels(bwnet$colors, moduleLabels);
 # Convert labels to colors for plotting

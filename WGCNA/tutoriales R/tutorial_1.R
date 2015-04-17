@@ -1,15 +1,11 @@
-# Display the current working directory
-initial.dir<-getwd();
-# If necessary, change the path below to the directory where the data files are stored.
-# "." means current directory. On Windows use a forward slash / instead of the usual \.
-workingDir = "1/FemaleLiver-Data/";
-setwd(workingDir);
+ruta="../Escritorio/tesis-pruebas/WGCNA/tutoriales R/";
+
 # Load the WGCNA package
 library(WGCNA);
 # The following setting is important, do not omit.
 options(stringsAsFactors = FALSE);
 #Read in the female liver data set
-femData = read.csv("LiverFemale3600.csv");
+femData = read.csv(paste(ruta, "FemaleLiver-Data/LiverFemale3600.csv", sep=""));
 # Take a quick look at what is in the data set:
 dim(femData);
 names(femData);
@@ -51,7 +47,7 @@ datExpr = datExpr0[keepSamples, ]
 nGenes = ncol(datExpr)
 nSamples = nrow(datExpr)
 
-traitData = read.csv("ClinicalTraits.csv");
+traitData = read.csv(paste(ruta, "FemaleLiver-Data/ClinicalTraits.csv", sep=""));
 dim(traitData)
 names(traitData)
 # remove columns that hold information we do not need.
@@ -72,8 +68,4 @@ traitColors = numbers2colors(datTraits, signed = FALSE);
 plotDendroAndColors(sampleTree2, traitColors,
 groupLabels = names(datTraits),
 main = "Sample dendrogram and trait heatmap")
-save(datExpr, datTraits, file = "FemaleLiver-01-dataInput.RData")
-
-
-
-setwd(initial.dir);
+save(datExpr, datTraits, file = paste(ruta, "FemaleLiver-Data/FemaleLiver-01-dataInput.RData", sep=""))

@@ -98,5 +98,5 @@ colorOrder = c("grey", standardColors(50));
 moduleLabels = match(moduleColors, colorOrder)-1;
 MEs = mergedMEs;
 # Save module colors and labels for use in subsequent parts
-save(MEs, moduleLabels, moduleColors, geneTree, file = "FemaleLiver-02-networkConstruction-stepByStep.RData")
+save(MEs, moduleLabels, moduleColors, geneTree, file = paste(ruta, "FemaleLiver-Data/FemaleLiver-02-networkConstruction-stepByStep.RData", sep=""))
 
