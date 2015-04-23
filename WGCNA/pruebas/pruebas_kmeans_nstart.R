@@ -4,27 +4,18 @@
 #configuraciones
 dim_red = 5; #los puntos en la red no son reales, son solo los lugares alrededor de los cuales se van a armar los clusters
 puntos_por_cluster = 50;
-parametro_de_red = 1;
-ancho_del_cluster = 0.25; #lo que mide el cluster en x
-alto_del_cluster = 0.25; #lo que mide el cluster en y
+parametro_de_red = 2;
+ancho_del_cluster = 0.1; #lo que mide el cluster en x
+alto_del_cluster = 0.1; #lo que mide el cluster en y
 iteraciones_de_k = 500; #cuantas veces vamos a probar ajustar con cada k el mismo set de datos
 nivel_de_ruido = 0; #entre 0 y 1, es el porcentaje de ruido en función de la cantidad de puntos que haya
-guardar_datos_de_corrida = TRUE;
+guardar_datos_de_corrida = FALSE;
 
 #limpiamos los graficos actuales
 graphics.off();
 
-#cargamos la libreria de cluster para poder usar silhouette
+#Traemos la librería de cluster para usar silhouette y otras cosas
 library(cluster);
-
-#creo un directorio para guardar ahí todos los datos de la corrida
-if(guardar_datos_de_corrida){
-	cat("Se van a guardar los datos de la corrida\n")
-	flush.console();
-	script.directorio_actual <- dirname(sys.frame(1)$ofile); # trae el directorio donde corre actualmente este archivo
-	script.directorio_de_archivos <- paste(script.directorio_actual, "/corridas/", format(Sys.time(), "%Y-%m-%d-%H-%M-%S"), sep="");
-	dir.create(script.directorio_de_archivos);
-}
 
 #genero la red equiespaciada
 a <- seq(1, dim_red*parametro_de_red, parametro_de_red);
@@ -65,51 +56,30 @@ promedios <- matrix(0, nrow=21, ncol=2);
 #Vamos a calcular un tiempo estimado de corrida del programa viendo cuanto tardan 10 iteraciones y multiplicando ese tiempo por iteraciones_de_k/10
 tiempo_de_inicio <- proc.time();
 
-
-#Comenzamos la corrida
-cat("Comenzando corrida\n");
-flush.console();
 for(i in 1:iteraciones_de_k){
 	for(k in (puntos_en_la_red-10):(puntos_en_la_red+10)){
 		#calculo los kmeans con k puntos aleatorios, el silhouette
 		#y saco un promedio de los promedios de cada cluster
 		#en el silhouette como medida de cuan buena fue la clusterización para ese k
-		km<-kmeans(puntos, k);
+		km<-kmeans(puntos, k, nstart=iteraciones_de_k);
 		d<-dist(puntos);
 		s<-silhouette(km$cluster, d);
 		si<-summary(s);
-		promedios[k-(puntos_en_la_red-11), 1] <- mean(si$clus.avg.width);
+		promedios[k-(puntos_en_la_red-11), 1] <- si$si.summary["Mean"];
 		promedios[k-(puntos_en_la_red-11), 2] <- k;	
-		#dev.new();
-		#plot(s);
 	}
 	
 	#El que dio el promedio más alto es el mejor k según este criterio
 	mejor_k[i,] <- promedios[which.max(promedios[,1]),];
 	
 	#a la 10 iteración me fijo cuanto tiempo hace que está corriendo y tiro un estimado
-	if(i==10){
+	if(i==1){
 		tiempo_para_10_iteraciones <- proc.time() - tiempo_de_inicio;
-		cat("Tiempo estimado de corrida: ", round((iteraciones_de_k * tiempo_para_10_iteraciones["elapsed"] / 10 )), " segundos\n", sep="")
+		cat("Tiempo estimado de corrida: ", round((iteraciones_de_k * tiempo_para_10_iteraciones["elapsed"] / 1 )), " segundos\n", sep="")
 	}
 	#Imprimo la iteración actual para saber por donde va y cuanto falta
 	print(i);
 	flush.console();
+	mejor_k[i,] <- promedios[which.max(promedios[,1]),];
 }
-
-#Mostramos un histograma para ver cual es el k que mejor ajustó
-dev.new();
-hist(mejor_k[,2], (puntos_en_la_red-10):(puntos_en_la_red+10), main="Histograma de mejores k", xlab="k",ylab="Ocurrencias")
-if(guardar_datos_de_corrida) savePlot(filename = paste(script.directorio_de_archivos, "/histograma.png", sep=""), "png");#guardo el plot en un archivo además de mostrarlo en pantalla
-
-#Mostramos los promedios para los mejores k para ver entre que valores se mueven
-dev.new();
-plot(mejor_k[,1], main="Valores de los mejores k en cada iteracion", xlab="N° de iteracion", ylab="Promedio")
-if(guardar_datos_de_corrida) savePlot(filename = paste(script.directorio_de_archivos, "/promedios.png", sep=""), "png");#guardo el plot en un archivo además de mostrarlo en pantalla
-
-#Guardo los datos de la corrida en un archivo de R
-if(guardar_datos_de_corrida) save(red, puntos, mejor_k, dim_red, puntos_por_cluster, parametro_de_red, ancho_del_cluster, alto_del_cluster, iteraciones_de_k, nivel_de_ruido, file = paste(script.directorio_de_archivos, "/kmeans.RData", sep=""));
-
-#Muestro cuanto tardo la corrida y donde se guardaron los archivos de la misma
-cat("La corrida demoro un estimado de:", (proc.time()["elapsed"] - tiempo_de_inicio["elapsed"]), "segundos\n");
-if(guardar_datos_de_corrida) cat("Archivos de la corrida guardados en:", script.directorio_de_archivos, "\n");
+plot(table(mejor_k[, 2]));
