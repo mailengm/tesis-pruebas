@@ -42,7 +42,7 @@ total_de_puntos <- puntos_en_la_red * puntos_por_cluster;
 #puntos_de_ruido <- matrix(runif(total_de_puntos*nivel_de_ruido*2, parametro_de_red-ancho_del_cluster, parametro_de_red*dim_red+ancho_del_cluster), nrow=total_de_puntos*nivel_de_ruido, ncol=2);
 
 #graficó los puntos y la red
-plot(puntos, main="Red a clusterizar", xlab="x",ylab="y");
+#plot(puntos, main="Red a clusterizar", xlab="x",ylab="y");
 points(red, col="yellow");
 #points(puntos_de_ruido, col="red");
 #legend((dim_red*parametro_de_red-4), (dim_red*parametro_de_red-1), c("Puntos", "Centros de cluster", "Ruido"), pch=c(1,1, 1), col=c("black", "yellow", "red"))
@@ -80,8 +80,7 @@ for(j in 1:10){
   puntos[, 1] <- runif(total_de_puntos, -ancho_del_cluster, ancho_del_cluster) + rep(red[, 1], each=puntos_por_cluster);
   puntos[, 2] <- runif(total_de_puntos, -alto_del_cluster, alto_del_cluster) + rep(red[, 2], each=puntos_por_cluster);
   for(i in seq(from = 1, to = 10, by = 1)){
-    #Meto los puntos de ruido entre los puntos de los clusters
-    puntos <- rbind(puntos, matrix(runif(80*2, parametro_de_red-ancho_del_cluster, parametro_de_red*dim_red+ancho_del_cluster), nrow=80, ncol=2));
+    
     
     for(k in (puntos_en_la_red - semi_cantidad_de_k_a_probar):(puntos_en_la_red + semi_cantidad_de_k_a_probar)){
       #calculo los kmeans con k puntos aleatorios, el silhouette
@@ -89,20 +88,22 @@ for(j in 1:10){
       #en el silhouette como medida de cuan buena fue la clusterización para ese k
       km<-kmeans(puntos, k, iter.max = maximas_iteraciones_de_k_means, nstart = iteraciones_de_k);
       d<-dist(puntos);
-      s<-dunn(d, km$cluster);
-      
+      #s<-dunn(d, km$cluster);
+      s<-silhouette(km$cluster,d);
       si<-summary(s);
       promedios[k-(puntos_en_la_red - semi_cantidad_de_k_a_probar - 1), 1] <- si$si.summary["Mean"]; #Promedio pesado de los promedios de los silhouettes
       promedios[k-(puntos_en_la_red - semi_cantidad_de_k_a_probar - 1), 2] <- k;	
     }
     #El que dio el promedio más alto es el mejor k según este criterio
-    mejor_k[i,j] <- promedios[which.max(promedios[,1]), 2];
-    mejor_p[i,j] <- promedios[which.max(promedios[,1]), 1];
+    mejor_k[j,i] <- promedios[which.max(promedios[,1]), 2];
+    mejor_p[j,i] <- promedios[which.max(promedios[,1]), 1];
     #Muestro cuanto tardó en correr uno y tiro un estimado de cuanto va a demorar todo
 
-    
+    #Meto los puntos de ruido entre los puntos de los clusters
+    puntos <- rbind(puntos, matrix(runif(80*2, parametro_de_red-ancho_del_cluster, parametro_de_red*dim_red+ancho_del_cluster), nrow=80, ncol=2));
 
   }
+  
   if(!ya_mostro_tiempo_estimado){
     tiempo_para_1_iteracion <- proc.time() - tiempo_de_inicio;
     cat("Tiempo estimado de corrida: ", round(cantidad_de_k_a_probar * tiempo_para_1_iteracion["elapsed"]), " segundos\n", sep="")
@@ -114,6 +115,14 @@ for(j in 1:10){
   
 }
 
+#Plot de mejor promedio
+ruido<-1:10
+dispersion<-1:10
+image.plot(ruido, dispersion,t(mejor_p))
+grid(nx=10, ny=10, lty=1)
+title(main = "Mejor p en funcion de ruido y dispersion", font.main = 4)
+box()
+text(expand.grid(x=ruido, y=dispersion), labels=t(mejor_k))
 
 #plot(mejor_k[, 2]);
 
