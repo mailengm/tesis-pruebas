@@ -1,8 +1,10 @@
 #TO DO
 #probar otros m茅todos en clvalid
 
+library(fields);
+
 #configuraciones
-dim_red = 4; #los puntos en la red no son reales, son solo los lugares alrededor de los cuales se van a armar los clusters
+dim_red = 2; #los puntos en la red no son reales, son solo los lugares alrededor de los cuales se van a armar los clusters
 puntos_por_cluster = 50;
 parametro_de_red = 1;
 ancho_del_cluster = 0.25; #lo que mide el cluster en x
@@ -11,7 +13,7 @@ iteraciones_de_k = 50; #cuantas veces vamos a probar ajustar con cada k el mismo
 maximas_iteraciones_de_k_means = 50; #Maximo de iteraciones que hace el kmeans si no converge
 nivel_de_ruido = 0.2; #entre 0 y 1, es el porcentaje de ruido en funci贸n de la cantidad de puntos que haya
 saltos_de_ruido = 0.1;
-cantidad_de_k_a_probar = 10; #Vamos a probar los k entre dim_red^2-cantidad_de_k_a_probar/2 y dim_red^2+cantidad_de_k_a_probar/2
+cantidad_de_k_a_probar = 4; #Vamos a probar los k entre dim_red^2-cantidad_de_k_a_probar/2 y dim_red^2+cantidad_de_k_a_probar/2
 guardar_datos_de_corrida = FALSE;
 
 #limpiamos los graficos actuales
@@ -70,17 +72,25 @@ tiempo_de_inicio <- proc.time();
 print("Comenzando corrida");
 flush.console();
 
+#Agrego una lista para guardar los valores de silhouette de cada iteraci髇 en k
+lsil<-list();
+data<-list();
+ldispersion<-list();
 #Bandera que me indica si ya mostr贸 el estimado de tiempo que va a demorar la corrida
 ya_mostro_tiempo_estimado = FALSE
 for(j in 1:10){
+  lruido<-list();
   ancho_del_cluster=j/10;
   alto_del_cluster=j/10;
   #Genero los puntos de los clusters
   puntos <- matrix(0, nrow=total_de_puntos, ncol=2);
   puntos[, 1] <- runif(total_de_puntos, -ancho_del_cluster, ancho_del_cluster) + rep(red[, 1], each=puntos_por_cluster);
   puntos[, 2] <- runif(total_de_puntos, -alto_del_cluster, alto_del_cluster) + rep(red[, 2], each=puntos_por_cluster);
+  
+  
   for(i in seq(from = 1, to = 10, by = 1)){
     
+    lruido[[i]]<-puntos;
     
     for(k in (puntos_en_la_red - semi_cantidad_de_k_a_probar):(puntos_en_la_red + semi_cantidad_de_k_a_probar)){
       #calculo los kmeans con k puntos aleatorios, el silhouette
@@ -88,12 +98,16 @@ for(j in 1:10){
       #en el silhouette como medida de cuan buena fue la clusterizaci贸n para ese k
       km<-kmeans(puntos, k, iter.max = maximas_iteraciones_de_k_means, nstart = iteraciones_de_k);
       d<-dist(puntos);
+      #data[[as.character(j,i)]]<-puntos
       #s<-dunn(d, km$cluster);
-      s<-silhouette(km$cluster,d);
+      #s<-silhouette(km$cluster,d);
+      lsil[[as.character(k)]]<-s<-silhouette(km$cluster,d);
       si<-summary(s);
       promedios[k-(puntos_en_la_red - semi_cantidad_de_k_a_probar - 1), 1] <- si$si.summary["Mean"]; #Promedio pesado de los promedios de los silhouettes
       promedios[k-(puntos_en_la_red - semi_cantidad_de_k_a_probar - 1), 2] <- k;	
     }
+    
+    
     #El que dio el promedio m谩s alto es el mejor k seg煤n este criterio
     mejor_k[j,i] <- promedios[which.max(promedios[,1]), 2];
     mejor_p[j,i] <- promedios[which.max(promedios[,1]), 1];
@@ -103,6 +117,8 @@ for(j in 1:10){
     puntos <- rbind(puntos, matrix(runif(80*2, parametro_de_red-ancho_del_cluster, parametro_de_red*dim_red+ancho_del_cluster), nrow=80, ncol=2));
 
   }
+  
+  ldispersion[[j]]<-lruido
   
   if(!ya_mostro_tiempo_estimado){
     tiempo_para_1_iteracion <- proc.time() - tiempo_de_inicio;
@@ -119,12 +135,28 @@ for(j in 1:10){
 ruido<-1:10
 dispersion<-1:10
 image.plot(ruido, dispersion,t(mejor_p))
+
 grid(nx=10, ny=10, lty=1)
 title(main = "Mejor p en funcion de ruido y dispersion", font.main = 4)
 box()
 text(expand.grid(x=ruido, y=dispersion), labels=t(mejor_k))
-
+  
 #plot(mejor_k[, 2]);
+
+if(FALSE){
+  res<-unlist(lapply(lsil,function(x){
+    return(summary(x)$si.summary["Mean"])
+  }))
+  plot(as.numeric(names(lsil)),res)
+  
+  k1<-kmeans(puntos,5,16)
+  
+  ccolors<-rainbow(21)[k1$cluster]
+  plot(puntos[,1],puntos[,2])
+  points(puntos[,1],puntos[,2],col=ccolors,pch=20)
+}
+
+
 
 #Mostramos un histograma para ver cual es el k que mejor ajust贸
 #dev.new();
