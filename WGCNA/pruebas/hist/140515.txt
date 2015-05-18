@@ -1,0 +1,340 @@
+library(dynamicTreeCut)
+?cutreeDynamic
+library(fields);
+#configuraciones
+dim_red = 2; #los puntos en la red no son reales, son solo los lugares alrededor de los cuales se van a armar los clusters
+puntos_por_cluster = 50;
+parametro_de_red = 1;
+ancho_del_cluster = 0.25; #lo que mide el cluster en x
+alto_del_cluster = 0.25; #lo que mide el cluster en y
+iteraciones_de_k = 50; #cuantas veces vamos a probar ajustar con cada k el mismo set de datos
+maximas_iteraciones_de_k_means = 50; #Maximo de iteraciones que hace el kmeans si no converge
+nivel_de_ruido = 0.5; #entre 0 y 1, es el porcentaje de ruido en funci贸n de la cantidad de puntos que haya
+saltos_de_ruido = 10;
+saltos_de_dispersion = 10;
+cantidad_de_k_a_probar = 20; #Vamos a probar los k entre dim_red^2-cantidad_de_k_a_probar/2 y dim_red^2+cantidad_de_k_a_probar/2
+guardar_datos_de_corrida = FALSE;
+#limpiamos los graficos actuales
+graphics.off();
+#creo un directorio para guardar ah铆 todos los datos de la corrida
+if(guardar_datos_de_corrida){
+cat("Se van a guardar los datos de la corrida\n")
+flush.console();
+script.directorio_actual <- dirname(sys.frame(1)$ofile); # trae el directorio donde corre actualmente este archivo
+script.directorio_de_archivos <- paste(script.directorio_actual, "/corridas/", format(Sys.time(), "%Y-%m-%d-%H-%M-%S"), sep="");
+dir.create(script.directorio_de_archivos);
+}
+#Traemos la librer铆a de cluster para usar silhouette y otras cosas
+library(cluster);
+a <- seq(1, dim_red*parametro_de_red, parametro_de_red);
+red <- matrix(data=a, nrow=dim_red^2, ncol=2);
+red[, 1] <- rep(a, each=dim_red);
+#genero los puntos de datos alrededor de la red
+puntos_en_la_red <- dim_red^2;
+total_de_puntos <- puntos_en_la_red * puntos_por_cluster;
+#Genero los puntos de ruido que son la misma cantidad que los puntos de la red pero no clusterizados. A medida que aumento el nivel de ruido los voy agregando
+#puntos_de_ruido <- matrix(runif(total_de_puntos*nivel_de_ruido*2, parametro_de_red-ancho_del_cluster, parametro_de_red*dim_red+ancho_del_cluster), nrow=total_de_puntos*nivel_de_ruido, ncol=2);
+#grafic贸 los puntos y la red
+#plot(puntos, main="Red a clusterizar", xlab="x",ylab="y");
+#points(red, col="yellow");
+#points(puntos_de_ruido, col="red");
+#legend((dim_red*parametro_de_red-4), (dim_red*parametro_de_red-1), c("Puntos", "Centros de cluster", "Ruido"), pch=c(1,1, 1), col=c("black", "yellow", "red"))
+if(guardar_datos_de_corrida) savePlot(filename = paste(script.directorio_de_archivos, "/red.png", sep=""), "png");#guardo el plot en un archivo adem谩s de mostrarlo en pantalla
+semi_cantidad_de_k_a_probar = cantidad_de_k_a_probar/2; 
+#Probamos kmeans para varios k, desde puntos_en_la_red-10 hasta puntos_en_la_red+10, 
+#nos quedamos con el de mejor promedio, iteramos varias veces y graficamos 
+#un histograma para ver que k ajust贸 mejor la mayor cantidad de veces
+mejor_k <- matrix(0, nrow=10, ncol=10); #Vamos a guardar el mejor k y el promedio que dio
+mejor_p <- matrix(0, nrow=10, ncol=10); #Vamos a guardar el mejor k y el promedio que dio
+promedios <- matrix(0, nrow=cantidad_de_k_a_probar, ncol=2);
+media <- matrix(0,nrow=10, ncol=10);
+#Vamos a calcular un tiempo estimado de corrida del programa viendo cuanto tardan 10 iteraciones y multiplicando ese tiempo por iteraciones_de_k/10
+tiempo_de_inicio <- proc.time();
+#Comenzamos la corrida
+#cat("Comenzando corrida\nDesde ", (puntos_en_la_red - semi_cantidad_de_k_a_probar), " hasta ", (puntos_en_la_red + semi_cantidad_de_k_a_probar), "\n", sep="");
+print("Comenzando corrida");
+flush.console();
+lsil<-list();
+data<-list();
+ldispersion<-list();
+#Bandera que me indica si ya mostr贸 el estimado de tiempo que va a demorar la corrida
+ya_mostro_tiempo_estimado = FALSE
+j=2
+ lruido<-list();
+  ancho_del_cluster=j/(2*saltos_de_dispersion);
+  alto_del_cluster=j/(2*saltos_de_dispersion);
+  #Genero los puntos de los clusters
+  puntos <- matrix(0, nrow=total_de_puntos, ncol=2);
+ # puntos[, 1] <- runif(total_de_puntos, -ancho_del_cluster, ancho_del_cluster) + rep(red[, 1], each=puntos_por_cluster);
+  puntos[, 1] <- rnorm(total_de_puntos, sd = ancho_del_cluster) + rep(red[, 1], each=puntos_por_cluster);
+  #puntos[, 2] <- runif(total_de_puntos, -alto_del_cluster, alto_del_cluster) + rep(red[, 2], each=puntos_por_cluster);
+  puntos[, 2] <- rnorm(total_de_puntos, sd = alto_del_cluster) + rep(red[, 2], each=puntos_por_cluster);
+i=1
+   #km<-kmeans(puntos, k, iter.max = maximas_iteraciones_de_k_means, nstart = iteraciones_de_k);
+      tree=hclust(d, method="complete");
+      clus=cutree(tree,k);
+   puntos
+plot(puntos[,1],puntos[,2])
+?dist
+  d<-dist(puntos)
+     tree=hclust(d, method="complete");
+      clus=cutree(tree,k);
+    dynamic=cutreeDynamic(dendro=tree,method="tree")
+ class(dynamic)
+dynamic
+points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+?silhouette
+silhouette(dynamic,d)
+k=4
+  clus=cutree(tree,k);
+    clus
+x11()
+plot(puntos[,1],puntos[,2])
+points(puntos[,1],puntos[,2],col=clus+1)
+plot(puntos[,1],puntos[,2])
+points(puntos[,1],puntos[,2],col=clus+1,pch=20)
+x11()
+plot(dendro)
+plot(tree)
+dynamic
+?dynamicTreeCut
+?cutreeDynamic
+class(d)
+as.matrix(d)
+str(d)
+?str
+call(d)
+?dist:class
+?"dist:class"
+?"class:dist"
+?"class::dist"
+?"dist::class"
+?dist
+as.matrix
+methods(as.matrix)
+as.matrix.dist
+methods(as.matrix.dist)
+slotNames(dist)
+slotNames(d)
+names(d)
+d
+a<-as.matrix(d)
+class(a)
+dynamicTreeCut::cutreeDynamicTree
+dynamicTreeCut::cutreeDynamicTree
+dynamicTreeCut::.locateCluster
+dynamicTreeCut:::.runlengthSign
+dim_red = 2; #los puntos en la red no son reales, son solo los lugares alrededor de los cuales se van a armar los clusters
+puntos_por_cluster = 5;
+parametro_de_red = 1;
+ancho_del_cluster = 0.25; #lo que mide el cluster en x
+alto_del_cluster = 0.25; #lo que mide el cluster en y
+iteraciones_de_k = 50; #cuantas veces vamos a probar ajustar con cada k el mismo set de datos
+maximas_iteraciones_de_k_means = 50; #Maximo de iteraciones que hace el kmeans si no converge
+nivel_de_ruido = 0.5; #entre 0 y 1, es el porcentaje de ruido en funci贸n de la cantidad de puntos que haya
+saltos_de_ruido = 10;
+saltos_de_dispersion = 10;
+cantidad_de_k_a_probar = 20; #Vamos a probar los k entre dim_red^2-cantidad_de_k_a_probar/2 y dim_red^2+cantidad_de_k_a_probar/2
+guardar_datos_de_corrida = FALSE;
+#limpiamos los graficos actuales
+graphics.off();
+#creo un directorio para guardar ah铆 todos los datos de la corrida
+if(guardar_datos_de_corrida){
+cat("Se van a guardar los datos de la corrida\n")
+flush.console();
+script.directorio_actual <- dirname(sys.frame(1)$ofile); # trae el directorio donde corre actualmente este archivo
+script.directorio_de_archivos <- paste(script.directorio_actual, "/corridas/", format(Sys.time(), "%Y-%m-%d-%H-%M-%S"), sep="");
+dir.create(script.directorio_de_archivos);
+}
+#Traemos la librer铆a de cluster para usar silhouette y otras cosas
+library(cluster);
+#genero la red equiespaciada
+a <- seq(1, dim_red*parametro_de_red, parametro_de_red);
+red <- matrix(data=a, nrow=dim_red^2, ncol=2);
+red[, 1] <- rep(a, each=dim_red);
+#genero los puntos de datos alrededor de la red
+puntos_en_la_red <- dim_red^2;
+total_de_puntos <- puntos_en_la_red * puntos_por_cluster;
+#Genero los puntos de ruido que son la misma cantidad que los puntos de la red pero no clusterizados. A medida que aumento el nivel de ruido los voy agregando
+#puntos_de_ruido <- matrix(runif(total_de_puntos*nivel_de_ruido*2, parametro_de_red-ancho_del_cluster, parametro_de_red*dim_red+ancho_del_cluster), nrow=total_de_puntos*nivel_de_ruido, ncol=2);
+#grafic贸 los puntos y la red
+#plot(puntos, main="Red a clusterizar", xlab="x",ylab="y");
+#points(red, col="yellow");
+#points(puntos_de_ruido, col="red");
+#legend((dim_red*parametro_de_red-4), (dim_red*parametro_de_red-1), c("Puntos", "Centros de cluster", "Ruido"), pch=c(1,1, 1), col=c("black", "yellow", "red"))
+if(guardar_datos_de_corrida) savePlot(filename = paste(script.directorio_de_archivos, "/red.png", sep=""), "png");#guardo el plot en un archivo adem谩s de mostrarlo en pantalla
+#Esto dice cuanto me tengo que correr de dim_red^2 para adelante y para atras
+semi_cantidad_de_k_a_probar = cantidad_de_k_a_probar/2; 
+#Probamos kmeans para varios k, desde puntos_en_la_red-10 hasta puntos_en_la_red+10, 
+#nos quedamos con el de mejor promedio, iteramos varias veces y graficamos 
+#un histograma para ver que k ajust贸 mejor la mayor cantidad de veces
+mejor_k <- matrix(0, nrow=10, ncol=10); #Vamos a guardar el mejor k y el promedio que dio
+mejor_p <- matrix(0, nrow=10, ncol=10); #Vamos a guardar el mejor k y el promedio que dio
+promedios <- matrix(0, nrow=cantidad_de_k_a_probar, ncol=2);
+media <- matrix(0,nrow=10, ncol=10);
+#Vamos a calcular un tiempo estimado de corrida del programa viendo cuanto tardan 10 iteraciones y multiplicando ese tiempo por iteraciones_de_k/10
+tiempo_de_inicio <- proc.time();
+#Comenzamos la corrida
+#cat("Comenzando corrida\nDesde ", (puntos_en_la_red - semi_cantidad_de_k_a_probar), " hasta ", (puntos_en_la_red + semi_cantidad_de_k_a_probar), "\n", sep="");
+print("Comenzando corrida");
+flush.console();
+lsil<-list();
+data<-list();
+ldispersion<-list();
+#Bandera que me indica si ya mostr贸 el estimado de tiempo que va a demorar la corrida
+ya_mostro_tiempo_estimado = FALSE
+ lruido<-list();
+  ancho_del_cluster=j/(2*saltos_de_dispersion);
+  alto_del_cluster=j/(2*saltos_de_dispersion);
+  #Genero los puntos de los clusters
+  puntos <- matrix(0, nrow=total_de_puntos, ncol=2);
+ # puntos[, 1] <- runif(total_de_puntos, -ancho_del_cluster, ancho_del_cluster) + rep(red[, 1], each=puntos_por_cluster);
+  puntos[, 1] <- rnorm(total_de_puntos, sd = ancho_del_cluster) + rep(red[, 1], each=puntos_por_cluster);
+  #puntos[, 2] <- runif(total_de_puntos, -alto_del_cluster, alto_del_cluster) + rep(red[, 2], each=puntos_por_cluster);
+  puntos[, 2] <- rnorm(total_de_puntos, sd = alto_del_cluster) + rep(red[, 2], each=puntos_por_cluster);
+  
+    
+    
+     d<-dist(puntos)
+    
+  #  for(k in 2:(cantidad_de_k_a_probar+1)){
+      #calculo los kmeans con k puntos aleatorios, el silhouette
+      #y saco un promedio de los promedios de cada cluster
+      #en el silhouette como medida de cuan buena fue la clusterizaci贸n para ese k
+      #km<-kmeans(puntos, k, iter.max = maximas_iteraciones_de_k_means, nstart = iteraciones_de_k);
+      tree=hclust(d, method="complete");
+      clus=cutree(tree,k);
+      
+      #data[[as.character(j,i)]]<-puntos
+      #s<-dunn(d, km$cluster);
+      #s<-silhouette(km$cluster,d);
+  #    lsil[[as.character(k)]]<-s<-silhouette(clus,d);
+  #    si<-summary(s);
+  #    promedios[k-1, 1] <- si$si.summary["Mean"]; #Promedio pesado de los promedios de los silhouettes
+  #    promedios[k-1, 2] <- k;  
+  #  }
+    
+   dynamic=cutreeDynamic(dendro=tree,method="tree")
+ plot(puntos[,1],puntos[,2])
+ clus=cutree(tree,k);
+       dynamic=cutreeDynamic(dendro=tree,method="tree",minClusterSize=4)
+ dynamic=cutreeDynamic(dendro=tree,method="tree",)
+    dynamic=cutreeDynamic(dendro=tree,method="tree",minClusterSize=4)
+   plot(puntos[,1],puntos[,2])
+points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+   
+x11()
+plot(tree)
+text(puntos[,1],puntos[,2],nrows(puntos),col=dynamic+1)
+text(puntos[,1],puntos[,2],nrow(puntos),col=dynamic+1)
+ dev.set(2)
+text(puntos[,1],puntos[,2],nrow(puntos),col=dynamic+1)
+   plot(puntos[,1],puntos[,2])
+    points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+ plot(puntos[,1],puntos[,2],typ="n")
+     text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+ dev.set(3)
+plot(tree)
+class(tree)
+str(hclust)
+str(tree)
+x11();
+tree$height
+plot(tree$height)
+plot(tree$height,typ="h")
+plot(tree$height[tree$order],typ="h")
+tree$height[tree$order]
+tree$order
+?hclust
+tree$merge
+tree$merge[tree$order,]
+methods(plot)
+?hclust
+lm<-mean(tree$height)
+lu<-1/2*(lm+max(tree$height))
+ld<-1/2*(lm+min(tree$height))
+dev.set(3)
+lines(h=c(ld,lm,lu),col=c(1,2,3),lty=2)
+ablines(h=c(ld,lm,lu),col=c(1,2,3),lty=2)
+abline(h=c(ld,lm,lu),col=c(1,2,3),lty=2)
+?cutreeDynamic
+    #km<-kmeans(puntos, k, iter.max = maximas_iteraciones_de_k_means, nstart = iteraciones_de_k);
+      tree=hclust(d, method="mean");
+      clus=cutree(tree,k);
+      tree=hclust(d, method="average");
+  x11()
+plot(tree)
+ dynamic=cutreeDynamic(dendro=tree,method="tree",minClusterSize=4)
+dynamic
+dev.set(2)
+ plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+  ?cutreeDynamic
+quantile(tree$height)
+?quantile
+quantile(tree$height,0.05)
+as.matrix(d)[8:10,8:10]
+as.matrix(d)[7:10,7:10]
+as.matrix(d)[6:10,6:10]
+?cutreeDynamic
+ dynamic=cutreeDynamic(dendro=tree,method="tree",minClusterSize=4,maxCoreScatter=0.09)
+  plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+  dynamic=cutreeDynamic(dendro=tree,method="tree",minClusterSize=4,maxCoreScatter=0.09)
+ plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+   dynamic=cutreeDynamic(dendro=tree,method="tree",minClusterSize=4,maxCoreScatter=0.19)
+  plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+ ?cutreeDynamic
+ dynamic=cutreeDynamic(dendro=tree,method="hybrid",minClusterSize=4,maxCoreScatter=0.19)
+  dynamic=cutreeDynamic(dendro=tree,distM=as.matrix(d),method="hybrid",minClusterSize=4)
+ plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+ ?cutreeDynamic
+ dynamic=cutreeDynamic(dendro=tree,distM=as.matrix(d),method="hybrid",minClusterSize=4,maxCoreScatter=0.01,
+                         pamStage=FALSE)
+   plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+     
+   dynamic=cutreeDynamic(dendro=tree,distM=as.matrix(d),method="hybrid",minClusterSize=4)
+plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+    dynamic=cutreeDynamic(dendro=tree,distM=as.matrix(d),method="hybrid",pamStage=FALSE,
+                         minClusterSize=4)
+  plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+     
+   dynamic=cutreeDynamic(dendro=tree,distM=as.matrix(d),method="hybrid",pamStage=FALSE,
+                         minClusterSize=4,maxCoreScatter=0.01)
+ plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+  dynamic=cutreeDynamic(dendro=tree,distM=as.matrix(d),method="hybrid",pamStage=FALSE,
+                         minClusterSize=4,maxCoreScatter=0.04)
+  plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+dynamic=cutreeDynamic(dendro=tree,distM=as.matrix(d),method="hybrid",pamStage=FALSE,
+                         minClusterSize=4,maxCoreScatter=0.03)
+  plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+ dynamic=cutreeDynamic(dendro=tree,distM=as.matrix(d),method="hybrid",pamStage=FALSE,
+                         minClusterSize=4,maxCoreScatter=0.04)
+ plot(puntos[,1],puntos[,2],typ="n")
+    #points(puntos[,1],puntos[,2],col=dynamic+1,pch=20)
+    text(puntos[,1],puntos[,2],1:nrow(puntos),col=dynamic+1)
+history
+history()
+?history
+savehistory(file="hist.Rdata")
