@@ -5,11 +5,12 @@ library(WGCNA)
 library(cluster)
 
 g <-read.graph("dolphins.paj", format="pajek");
-g <-read.graph("lesmis.gml", format="gml")
+g <-read.graph("lesmis.gml", format="gml");
+g <- read.graph("ejemplo1.paj", format="pajek");
 #g <- read.graph("karate.paj", format="pajek");
 #g <- graph( c(1,2,2,3,3,4,5,6), directed=FALSE )
 #g <- graph.lattice(c(2,1,3))
-#g <- graph.full(5, loops=FALSE)
+#g <- graph.full(20, loops=FALSE)
 
 ###################################################################################################
 ## MATRIZ DE SIMILARIDAD// DENDRO 
@@ -27,7 +28,6 @@ for (i in 1:nedges){ #Llamo a los links por el número que le pone get.edges
    comun<-intersect(edges[i,],edges[l,])
    if(length(comun)==1){
    
-   ## No queda general!!
    j=edges[i, !edges[i,]%in%comun ];
    k=edges[l, !edges[l,]%in%comun ];
   
@@ -46,7 +46,7 @@ for (i in 1:nedges){ #Llamo a los links por el número que le pone get.edges
 diag(s)<-1
 
 
-dendro <- hclust(as.dist(1-s));
+dendro <- hclust(as.dist(1-s),method="single");
 #dendro <- hclust(as.dist(s),method="average");
 ###################################################################################################
 ## CLUSTERING
