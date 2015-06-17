@@ -5,6 +5,7 @@ library(WGCNA)
 library(cluster)
 
 g <-read.graph("dolphins.paj", format="pajek");
+g <-read.graph("lesmis.gml", format="gml")
 #g <- read.graph("karate.paj", format="pajek");
 #g <- graph( c(1,2,2,3,3,4,5,6), directed=FALSE )
 #g <- graph.lattice(c(2,1,3))
@@ -20,40 +21,48 @@ edges <- get.edges(g,E(g))
  
 s<- matrix(data=0,nrow=nedges,ncol=nedges);
 
-for (i in 1:(nedges-1)){ #Llamo a los links por el número que le pone get.edges
- for(l in 1:(nedges-1)){
-keystone <-intersect(edges[i,],edges[l,])/1
-
- if(length(keystone)){
- ## No queda general!!
-  j=edges[i,2];
-  k=edges[l,2];
+for (i in 1:nedges){ #Llamo a los links por el número que le pone get.edges
+ for(l in (i+1):nedges){
+   if(l>nedges) next
+   comun<-intersect(edges[i,],edges[l,])
+   if(length(comun)==1){
+   
+   ## No queda general!!
+   j=edges[i, !edges[i,]%in%comun ];
+   k=edges[l, !edges[l,]%in%comun ];
   
-  a <- neighborhood(g,order=1, nodes=j)[[1]]
-  b <- neighborhood(g,order=1, nodes=k)[[1]]
-  s[i,l]= length(intersect(a, b))/length(union(a,b));
+   a <- neighborhood(g,order=1, nodes=j)[[1]]
+   b <- neighborhood(g,order=1, nodes=k)[[1]]
+   s[i,l]= s[l,i] =length(intersect(a, b))/length(union(a,b));
   
-  } else {
-         s[i,l]=0;
+  }else{
+    if(length(comun)==0){
+     s[i,l]=s[l,i]=0;
+    }
   }
-  s[i,i]=1;
-  }
+ }
 }
 
-dendro <- hclust(as.dist(s));
+diag(s)<-1
+
+
+dendro <- hclust(as.dist(1-s));
 #dendro <- hclust(as.dist(s),method="average");
 ###################################################################################################
 ## CLUSTERING
 ###################################################################################################
 
 ## Dynamic Tree Cut
+cutHeight<-NULL
+method<-"hybrid"
+dynamic <- cutreeDynamic(dendro,distM = 1-s,minClusterSize=4,pamStage=FALSE,deepSplit=0)
 
 dynamic = cutreeDynamic(
-      dendro, cutHeight = NULL, minClusterSize = 4,
+      dendro, cutHeight = cutHeight, minClusterSize = 4,
 
       # Basic tree cut options
-      method = "hybrid"
-      distM =s,
+      method = method,
+      distM =1-s,
       deepSplit = (ifelse(method=="hybrid", 1, FALSE)),
 
       # Advanced options
@@ -76,7 +85,8 @@ dynamic = cutreeDynamic(
 
       # Various options
       verbose = 2, indent = 0)
-E(g)$color <- dynamic
+
+E(g)$color <- dynamic+1
 plot(g)    
 
 if(FALSE){
@@ -85,11 +95,40 @@ E(g)$color <- clust
 plot(g)
 }
 
+###################################################################################################
 ## Densidad de Partición
+###################################################################################################
 
+Particion<-matrix(data=0,nrow=1001,ncol=2) #Vector vacio para la densidad de particion a cada altura
+count=1
 
+for(height in seq(0,1,by=0.001)){ #Barro en alturas
 
+#height=.9 #un for en las alturas
+  cut<-cutree(dendro,h=height)
 
+  clus<-as.matrix(table(cut))
+  c<-length(clus) 
+  
+ 
+  suma=0;
+        for(i in 1:c){
+          m<-clus[i,]; #mc cantidad de links en el cluster 
+          n<-which(cut==i);#que links tengo en el cluster
+          nc<-length(table(edges[n,]))#cuantos nodos tengo en el cluster
+          if(nc>2){
+          print(nc)
+          suma=suma+(m*(m-nc+1)/((nc-2)*(nc-1))) # A veces divido por cero!! :S
+          }
+          }
+          
+     D=(2/nodes)*suma
+  Particion[count,1]<-height;
+  Particion[count,2]<-D
+  count<-count+1      
+  }
+ 
+  
 
 
 ###################################################################################################
